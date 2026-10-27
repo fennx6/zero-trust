@@ -1,0 +1,23 @@
+# Environment & secrets
+.env
+.env.local
+AGENTS.md
+
+# Database lokal (berisi data sensitif)
+data/*.sqlite
+data/*.sqlite-*
+*.sqlite3
+
+# Log lokal
+logs/
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

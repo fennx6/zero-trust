@@ -1,0 +1,26 @@
+{
+  "name": "zero-trust-sistem-nilai",
+  "version": "1.0.0",
+  "description": "Praktikum Keamanan Informasi: Sistem Nilai Informatika dengan prinsip Zero Trust (gateway, service nilai, service transkrip)",
+  "main": "gateway/server.js",
+  "scripts": {
+    "setup": "node database/seed.js",
+    "gateway": "node gateway/server.js",
+    "service:nilai": "node services/nilai/server.js",
+    "service:transkrip": "node services/transkrip/server.js",
+    "start:all": "concurrently \"npm run gateway\" \"npm run service:nilai\" \"npm run service:transkrip\""
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^13.0.3",
+    "concurrently": "^10.0.6",
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "http-proxy-middleware": "^4.2.1",
+    "jsonwebtoken": "^9.0.3"
+  }
+}
