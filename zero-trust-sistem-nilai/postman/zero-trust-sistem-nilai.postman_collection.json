@@ -1,0 +1,671 @@
+{
+  "info": {
+    "_postman_id": "9f1e2f3b-1111-4a5b-8c2d-640000000001",
+    "name": "Zero Trust Sistem Nilai — <Auth, Nilai/Kelas, Anti-lompat-pintu>",
+    "description": "Koleksi uji API Sistem Nilai Zero Trust.\n\nPrasyarat:\n1. Jalankan ketiga aplikasi (npm run gateway / service:nilai / service:transkrip).\n2. Isi collection variable `serviceClientSecret` dan `gatewaySecret` dengan nilai dari .env AKTIF (lihat README).\n3. Untuk skenario finalisasi sukses, default jam akses 07:00-21:00 (Asia/Jakarta). Koleksi 'luar jam' ada di file terpisah.\n\nVariabel dinamis (accessTokenDosen1, nilaiId..., dll.) diisi otomatis oleh test script — pastikan request dijalankan berurutan dalam folder.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:3000" },
+    { "key": "serviceNilaiUrl", "value": "http://localhost:3001" },
+    { "key": "serviceTranskripUrl", "value": "http://localhost:3002" },
+    { "key": "deviceAdmin", "value": "DEV-ADMIN-01" },
+    { "key": "deviceDosen1", "value": "DEV-DOSEN-01" },
+    { "key": "deviceDosen2", "value": "DEV-DOSEN-02" },
+    { "key": "deviceMhs1", "value": "DEV-MHS-01" },
+    { "key": "deviceMhs2", "value": "DEV-MHS-02" },
+    { "key": "dosenUser1", "value": "budi.santoso" },
+    { "key": "dosenUser2", "value": "siti.rahayu" },
+    { "key": "dosenPass", "value": "Dosen#12345" },
+    { "key": "adminUser", "value": "admin" },
+    { "key": "adminPass", "value": "Admin#12345" },
+    { "key": "nimAndi", "value": "10522001" },
+    { "key": "nimBela", "value": "10522002" },
+    { "key": "nimCahyo", "value": "10522003" },
+    { "key": "mhsPass", "value": "Mhs#12345" },
+    { "key": "serviceClientId", "value": "nilai-service" },
+    { "key": "serviceClientSecret", "value": "ISI-DARI-ENV-LOKAL" },
+    { "key": "gatewaySecret", "value": "ISI-DARI-ENV-LOKAL" },
+    { "key": "accessTokenDosen1", "value": "" },
+    { "key": "refreshTokenDosen1", "value": "" },
+    { "key": "rtOldDosen1", "value": "" },
+    { "key": "accessTokenDosen2", "value": "" },
+    { "key": "accessTokenMhs1", "value": "" },
+    { "key": "accessTokenAdmin", "value": "" },
+    { "key": "nilaiIdKif101Andi", "value": "" },
+    { "key": "nilaiIdKif102Final", "value": "" },
+    { "key": "enrollIdKif102Cahyo", "value": "" },
+    { "key": "kelasIdKif101", "value": "" },
+    { "key": "kelasIdKif102", "value": "" },
+    { "key": "serviceToken", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "A. Autentikasi",
+      "item": [
+        {
+          "name": "A1  Login dosen (200, simpan token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{dosenUser1}}\",\"password\":\"{{dosenPass}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('TTL access token 600 detik', () => pm.expect(b.expiresIn).to.eql(600));",
+              "pm.collectionVariables.set('accessTokenDosen1', b.accessToken);",
+              "pm.collectionVariables.set('refreshTokenDosen1', b.refreshToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A2  Login mahasiswa (200, simpan token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{nimAndi}}\",\"password\":\"{{mhsPass}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.collectionVariables.set('accessTokenMhs1', b.accessToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A3  Login admin (200, simpan token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceAdmin}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{adminUser}}\",\"password\":\"{{adminPass}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('accessTokenAdmin', pm.response.json().accessToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A3b  Login dosen2 (200, simpan token)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen2}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{dosenUser2}}\",\"password\":\"{{dosenPass}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.collectionVariables.set('accessTokenDosen2', pm.response.json().accessToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A4  Login password salah (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{dosenUser1}}\",\"password\":\"benar-tapi-salah\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code CREDENTIALS_INVALID', () => { const e = pm.response.json().error; pm.expect(e).to.have.property('code', 'CREDENTIALS_INVALID'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "A5  Login device milik user lain (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+            "body": { "mode": "raw", "raw": "{\"username\":\"{{dosenUser1}}\",\"password\":\"{{dosenPass}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code DEVICE_NOT_REGISTERED', () => { pm.expect(pm.response.json().error).to.have.property('code', 'DEVICE_NOT_REGISTERED'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "A6  Refresh valid (200, rotasi single-use)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/refresh", "host": ["{{gatewayUrl}}"], "path": ["auth", "refresh"] },
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{refreshTokenDosen1}}\"}" }
+          },
+          "event": [
+            { "listen": "prerequest", "script": { "type": "text/javascript", "exec": [
+              "pm.collectionVariables.set('rtOldDosen1', pm.collectionVariables.get('refreshTokenDosen1'));"
+            ] } },
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('refresh token baru berbeda dari lama', () => pm.expect(b.refreshToken).to.not.eql(pm.collectionVariables.get('rtOldDosen1')));",
+              "pm.collectionVariables.set('refreshTokenDosen1', b.refreshToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A7  Refresh dengan token lama yang sudah putar (401 REVOKED)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/refresh", "host": ["{{gatewayUrl}}"], "path": ["auth", "refresh"] },
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{rtOldDosen1}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code REFRESH_TOKEN_REVOKED', () => { pm.expect(pm.response.json().error).to.have.property('code', 'REFRESH_TOKEN_REVOKED'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "A8  Logout (200, refresh token dicabut)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/logout", "host": ["{{gatewayUrl}}"], "path": ["auth", "logout"] },
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{refreshTokenDosen1}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('pesan logout', () => { pm.expect(pm.response.json().message).to.include('dicabut'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "A9  Refresh setelah logout (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/refresh", "host": ["{{gatewayUrl}}"], "path": ["auth", "refresh"] },
+            "body": { "mode": "raw", "raw": "{\"refreshToken\":\"{{refreshTokenDosen1}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code REFRESH_TOKEN_REVOKED', () => { pm.expect(pm.response.json().error).to.have.property('code', 'REFRESH_TOKEN_REVOKED'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "A10  /auth/service valid (200, TTL 300)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/service", "host": ["{{gatewayUrl}}"], "path": ["auth", "service"] },
+            "body": { "mode": "raw", "raw": "{\"clientId\":\"{{serviceClientId}}\",\"clientSecret\":\"{{serviceClientSecret}}\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('TTL token service 300 detik', () => pm.expect(b.expiresIn).to.eql(300));",
+              "pm.collectionVariables.set('serviceToken', b.accessToken);"
+            ] } }
+          ]
+        },
+        {
+          "name": "A11  /auth/service kredensial salah (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/auth/service", "host": ["{{gatewayUrl}}"], "path": ["auth", "service"] },
+            "body": { "mode": "raw", "raw": "{\"clientId\":\"nilai-service\",\"clientSecret\":\"salah-total\"}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code CLIENT_INVALID', () => { pm.expect(pm.response.json().error).to.have.property('code', 'CLIENT_INVALID'); });"
+            ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "B. Nilai & Kelas via gateway",
+      "item": [
+        {
+          "name": "B1  Dosen1 GET /nilai — capture KIF-101 id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai", "host": ["{{gatewayUrl}}"], "path": ["nilai"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('dosen hanya lihat KIF-101', () => pm.expect(b.kelas).to.have.lengthOf(1));",
+              "pm.collectionVariables.set('kelasIdKif101', String(b.kelas[0].kelas.id));",
+              "const andi = b.kelas[0].peserta.find(p => p.nim === pm.collectionVariables.get('nimAndi'));",
+              "pm.collectionVariables.set('nilaiIdKif101Andi', String(andi.nilai_id));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B2  Dosen2 GET /nilai — capture KIF-102 id",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen2}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen2}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai", "host": ["{{gatewayUrl}}"], "path": ["nilai"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const k = pm.response.json().kelas[0];",
+              "pm.collectionVariables.set('kelasIdKif102', String(k.kelas.id));",
+              "const andi = k.peserta.find(p => p.nim === pm.collectionVariables.get('nimAndi'));",
+              "pm.test('nilai Andi di KIF-102 sudah final di seed', () => pm.expect(andi.final).to.eql(true));",
+              "pm.collectionVariables.set('nilaiIdKif102Final', String(andi.nilai_id));",
+              "const cahyo = k.peserta.find(p => p.nim === pm.collectionVariables.get('nimCahyo'));",
+              "pm.test('Cahyo belum dinilai (seed)', () => pm.expect(cahyo.nilai_id).to.eql(null));",
+              "pm.collectionVariables.set('enrollIdKif102Cahyo', String(cahyo.enroll_id));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B3  Mahasiswa GET /nilai (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai", "host": ["{{gatewayUrl}}"], "path": ["nilai"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('mahasiswa melihat 2 baris nilai', () => pm.expect(pm.response.json().nilai).to.have.lengthOf(2));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B4  Mahasiswa GET transkrip sendiri (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/transkrip/{{nimAndi}}", "host": ["{{gatewayUrl}}"], "path": ["transkrip", "{{nimAndi}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('transkrip adalah array', () => pm.expect(Array.isArray(pm.response.json().transkrip)).to.eql(true));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B5  Mahasiswa GET transkrip NIM lain (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/transkrip/{{nimBela}}", "host": ["{{gatewayUrl}}"], "path": ["transkrip", "{{nimBela}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code FORBIDDEN_OWNERSHIP', () => { pm.expect(pm.response.json().error).to.have.property('code', 'FORBIDDEN_OWNERSHIP'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B6  Admin GET transkrip mahasiswa mana pun (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenAdmin}}" },
+              { "key": "X-Device-ID", "value": "{{deviceAdmin}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/transkrip/{{nimAndi}}", "host": ["{{gatewayUrl}}"], "path": ["transkrip", "{{nimAndi}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B7  Dosen1 PUT nilai Andi 95 (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif101Andi}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif101Andi}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 95}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "pm.test('nilai tersimpan 95', () => pm.expect(pm.response.json().nilai).to.eql(95));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B8  Mahasiswa PUT nilai (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif101Andi}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif101Andi}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code FORBIDDEN_ROLE', () => { pm.expect(pm.response.json().error).to.have.property('code', 'FORBIDDEN_ROLE'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B9  Dosen1 PUT nilai kelas dosen lain (403 OWNERSHIP)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif102Final}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif102Final}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code FORBIDDEN_OWNERSHIP', () => { pm.expect(pm.response.json().error).to.have.property('code', 'FORBIDDEN_OWNERSHIP'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B10  Dosen2 PUT nilai yang sudah final (403)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen2}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen2}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif102Final}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif102Final}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 77}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code ALREADY_FINAL', () => { pm.expect(pm.response.json().error).to.have.property('code', 'ALREADY_FINAL'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B11  PUT nilai 999 (400)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif101Andi}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif101Andi}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 999}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 400', () => pm.response.to.have.status(400));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B12  PUT nilai baru untuk Cahyo via enrollment id (200)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen2}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen2}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{enrollIdKif102Cahyo}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{enrollIdKif102Cahyo}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 77}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200 (baris nilai baru dibuat)', () => pm.response.to.have.status(200));",
+              "pm.test('nilai baru 77, belum final', () => { const b = pm.response.json(); pm.expect(b.nilai).to.eql(77); pm.expect(b.final).to.eql(false); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B13  Finalisasi kelas dosen lain (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/kelas/{{kelasIdKif102}}/finalisasi", "host": ["{{gatewayUrl}}"], "path": ["kelas", "{{kelasIdKif102}}", "finalisasi"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code FORBIDDEN_OWNERSHIP', () => { pm.expect(pm.response.json().error).to.have.property('code', 'FORBIDDEN_OWNERSHIP'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B14  Finalisasi kelas pengampu → sinkron via gateway (200)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/kelas/{{kelasIdKif101}}/finalisasi", "host": ["{{gatewayUrl}}"], "path": ["kelas", "{{kelasIdKif101}}", "finalisasi"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const b = pm.response.json();",
+              "pm.test('finalisasi 3 nilai & sinkron berhasil', () => { pm.expect(b.jumlah_nilai).to.eql(3); pm.expect(b.sinkron).to.eql(true); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "B15  Mahasiswa GET transkrip — sudah berisi hasil sinkron (200)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/transkrip/{{nimAndi}}", "host": ["{{gatewayUrl}}"], "path": ["transkrip", "{{nimAndi}}"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+              "const t = pm.response.json().transkrip.find(x => x.kode === 'KIF-101');",
+              "pm.test('KIF-101 terisi nilai 95 hasil sinkron', () => pm.expect(t).to.exist && pm.expect(t.nilai).to.eql(95));"
+            ] } }
+          ]
+        },
+        {
+          "name": "B16  PUT nilai setelah finalisasi (403 ALREADY_FINAL)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/nilai/{{nilaiIdKif101Andi}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{nilaiIdKif101Andi}}"] },
+            "body": { "mode": "raw", "raw": "{\"nilai\": 50}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code ALREADY_FINAL', () => { pm.expect(pm.response.json().error).to.have.property('code', 'ALREADY_FINAL'); });"
+            ] } }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "C. Sinkron & anti-lompat-pintu",
+      "item": [
+        {
+          "name": "C1  Token USER ke POST /transkrip/sinkron via gateway (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" },
+              { "key": "X-Device-ID", "value": "{{deviceMhs1}}" }
+            ],
+            "url": { "raw": "{{gatewayUrl}}/transkrip/sinkron", "host": ["{{gatewayUrl}}"], "path": ["transkrip", "sinkron"] },
+            "body": { "mode": "raw", "raw": "{\"nim\":\"{{nimAndi}}\",\"kelasCode\":\"KIF-101\",\"nilai\":1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+              "pm.test('code ENDPOINT_SERVICE_ONLY', () => { pm.expect(pm.response.json().error).to.have.property('code', 'ENDPOINT_SERVICE_ONLY'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "C2  Langsung ke Service Nilai tanpa gateway secret (401)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" }
+            ],
+            "url": { "raw": "{{serviceNilaiUrl}}/nilai", "host": ["{{serviceNilaiUrl}}"], "path": ["nilai"] }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code GATEWAY_SECRET_MISSING', () => { pm.expect(pm.response.json().error).to.have.property('code', 'GATEWAY_SECRET_MISSING'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "C3  Langsung ke Service Transkrip, secret salah (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Gateway-Secret", "value": "secret-palsu" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" }
+            ],
+            "url": { "raw": "{{serviceTranskripUrl}}/transkrip/sinkron", "host": ["{{serviceTranskripUrl}}"], "path": ["transkrip", "sinkron"] },
+            "body": { "mode": "raw", "raw": "{\"nim\":\"{{nimAndi}}\",\"kelasCode\":\"KIF-101\",\"nilai\":1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code GATEWAY_SECRET_WRONG', () => { pm.expect(pm.response.json().error).to.have.property('code', 'GATEWAY_SECRET_WRONG'); });"
+            ] } }
+          ]
+        },
+        {
+          "name": "C4  Langsung ke Service Transkrip, secret benar + token USER (403)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Gateway-Secret", "value": "{{gatewaySecret}}" },
+              { "key": "Authorization", "value": "Bearer {{accessTokenMhs1}}" }
+            ],
+            "url": { "raw": "{{serviceTranskripUrl}}/transkrip/sinkron", "host": ["{{serviceTranskripUrl}}"], "path": ["transkrip", "sinkron"] },
+            "body": { "mode": "raw", "raw": "{\"nim\":\"{{nimAndi}}\",\"kelasCode\":\"KIF-101\",\"nilai\":1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 403 — token user ditolak di service', () => pm.response.to.have.status(403));"
+            ] } }
+          ]
+        },
+        {
+          "name": "C5  Langsung ke Service Transkrip, secret benar tanpa token (401)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "X-Gateway-Secret", "value": "{{gatewaySecret}}" }
+            ],
+            "url": { "raw": "{{serviceTranskripUrl}}/transkrip/sinkron", "host": ["{{serviceTranskripUrl}}"], "path": ["transkrip", "sinkron"] },
+            "body": { "mode": "raw", "raw": "{\"nim\":\"{{nimAndi}}\",\"kelasCode\":\"KIF-101\",\"nilai\":1}" }
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": [
+              "pm.test('HTTP 401', () => pm.response.to.have.status(401));",
+              "pm.test('code TOKEN_MISSING', () => { pm.expect(pm.response.json().error).to.have.property('code', 'TOKEN_MISSING'); });"
+            ] } }
+          ]
+        }
+      ]
+    }
+  ]
+}

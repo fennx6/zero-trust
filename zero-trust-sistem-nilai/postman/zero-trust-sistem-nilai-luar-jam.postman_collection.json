@@ -1,0 +1,94 @@
+{
+  "info": {
+    "_postman_id": "9f1e2f3b-1111-4a5b-8c2d-640000000002",
+    "name": "Zero Trust Sistem Nilai — Di luar jam akses (jalankan tersendiri)",
+    "description": "Koleksi NEGATIF untuk menguji pembatasan jam akses (07:00-21:00 default, Asia/Jakarta).\n\nCARA PAKAI:\n1. Ubah .env sehingga jam akses PASTI berada di luar waktu sekarang, mis.ACCESS_START_HOUR=1 dan ACCESS_END_HOUR=2 agar terkunci pada jam lain.\n2. Restart gateway, service nilai, dan service transkrip supaya .env baru terbaca.\n3. Jalankan koleksi ini (semuanya harus 403). Request disahkan dulu; id diambil dinamis dari GET /nilai sehingga tidak tergantung state seed.\n4. Jika selesai uji, kembalikan .env ke 07-21 dan restart service lagi.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:3000" },
+    { "key": "deviceDosen1", "value": "DEV-DOSEN-01" },
+    { "key": "nimAndi", "value": "10522001" },
+    { "key": "dosenUser1", "value": "budi.santoso" },
+    { "key": "dosenPass", "value": "Dosen#12345" },
+    { "key": "accessTokenDosen1", "value": "" },
+    { "key": "putTargetId", "value": "" },
+    { "key": "kelasId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "D1  Login dosen (200)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+        ],
+        "url": { "raw": "{{gatewayUrl}}/auth/login", "host": ["{{gatewayUrl}}"], "path": ["auth", "login"] },
+        "body": { "mode": "raw", "raw": "{\"username\":\"{{dosenUser1}}\",\"password\":\"{{dosenPass}}\"}" }
+      },
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "pm.collectionVariables.set('accessTokenDosen1', pm.response.json().accessToken);"
+        ] } }
+      ]
+    },
+    {
+      "name": "D2  Dosen GET /nilai — ambil id (200)",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+          { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+        ],
+        "url": { "raw": "{{gatewayUrl}}/nilai", "host": ["{{gatewayUrl}}"], "path": ["nilai"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('HTTP 200', () => pm.response.to.have.status(200));",
+          "const k = pm.response.json().kelas[0];",
+          "pm.collectionVariables.set('kelasId', String(k.kelas.id));",
+          "const target = k.peserta.find(p => p.nim === pm.collectionVariables.get('nimAndi')) || k.peserta[0];",
+          "pm.collectionVariables.set('putTargetId', String(target.nilai_id !== null ? target.nilai_id : target.enroll_id));"
+        ] } }
+      ]
+    },
+    {
+      "name": "D3  PUT nilai di luar jam (403 OUTSIDE_ACCESS_HOURS)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+          { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+        ],
+        "url": { "raw": "{{gatewayUrl}}/nilai/{{putTargetId}}", "host": ["{{gatewayUrl}}"], "path": ["nilai", "{{putTargetId}}"] },
+        "body": { "mode": "raw", "raw": "{\"nilai\": 90}" }
+      },
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+          "pm.test('code OUTSIDE_ACCESS_HOURS', () => { pm.expect(pm.response.json().error).to.have.property('code', 'OUTSIDE_ACCESS_HOURS'); });"
+        ] } }
+      ]
+    },
+    {
+      "name": "D4  Finalisasi di luar jam (403 OUTSIDE_ACCESS_HOURS)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessTokenDosen1}}" },
+          { "key": "X-Device-ID", "value": "{{deviceDosen1}}" }
+        ],
+        "url": { "raw": "{{gatewayUrl}}/kelas/{{kelasId}}/finalisasi", "host": ["{{gatewayUrl}}"], "path": ["kelas", "{{kelasId}}", "finalisasi"] }
+      },
+      "event": [
+        { "listen": "test", "script": { "type": "text/javascript", "exec": [
+          "pm.test('HTTP 403', () => pm.response.to.have.status(403));",
+          "pm.test('code OUTSIDE_ACCESS_HOURS', () => { pm.expect(pm.response.json().error).to.have.property('code', 'OUTSIDE_ACCESS_HOURS'); });"
+        ] } }
+      ]
+    }
+  ]
+}

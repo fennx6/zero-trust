@@ -26,7 +26,8 @@ const sqlNilaiMahasiswa = `
 
 const sqlNilaiDosenPerKelas = `
   SELECT k.id AS kelas_id, k.kode, k.nama AS nama_kelas,
-         u.nim, u.nama AS nama_mahasiswa, n.id AS nilai_id,
+         u.nim, u.nama AS nama_mahasiswa,
+         e.id AS enroll_id, n.id AS nilai_id,
          n.nilai, n.final, n.updated_at
   FROM kelas k
   JOIN enrollments e ON e.kelas_id = k.id
@@ -71,6 +72,7 @@ router.get('/nilai', requireRole('mahasiswa', 'dosen'), (req, res) => {
     byKelas.get(r.kode).peserta.push({
       nim: r.nim,
       nama: r.nama_mahasiswa,
+      enroll_id: r.enroll_id,
       nilai_id: r.nilai_id,
       nilai: r.nilai,
       final: r.final ? true : false,
