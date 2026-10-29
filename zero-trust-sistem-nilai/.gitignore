@@ -1,6 +1,7 @@
 # Environment & secrets
 .env
 .env.local
+newman-env.tmp.json
 AGENTS.md
 
 # Database lokal (berisi data sensitif)
